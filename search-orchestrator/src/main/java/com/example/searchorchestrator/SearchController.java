@@ -1,12 +1,10 @@
 package com.example.searchorchestrator;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestClient;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -18,29 +16,27 @@ import java.time.Duration;
  * All code comments and documentation are written in English.
  */
 @RestController
+@RequestMapping("/search")
 public class SearchController {
 
+    private final SearchService searchService;
     private final StringRedisTemplate redisTemplate;
-    private final RestClient restClient;
 
-    @Value("${reasoning.engine.url}")
-    private String reasoningEngineUrl;
-
-    public SearchController(StringRedisTemplate redisTemplate) {
+    public SearchController(SearchService searchService, StringRedisTemplate redisTemplate) {
+        this.searchService = searchService;
         this.redisTemplate = redisTemplate;
-        this.restClient = RestClient.create();
     }
 
     /**
      * Endpoint to perform a search.
      *
-     * @param query The search query string.
+     * @param request The search request.
      * @return The search result.
      */
-    @GetMapping("/search")
-    public ResponseEntity<String> search(@RequestParam String query) {
+    @PostMapping
+    public SearchResponse search(@RequestBody SearchRequest request) {
         // Normalize the search query by trimming whitespace and lowercasing
-        String normalizedQuery = query.trim().toLowerCase();
+        String normalizedQuery = request.getQuery() != null ? request.getQuery().trim().toLowerCase() : "";
 
         // Hash the normalized query to use as a Redis key
         String cacheKey = hashQuery(normalizedQuery);
@@ -50,28 +46,18 @@ public class SearchController {
 
         if (cachedResponse != null) {
             // Cache hit: return immediately
-            return ResponseEntity.ok(cachedResponse);
+            return new SearchResponse(cachedResponse, "redis-cache");
         }
 
-        // Cache miss: proceed with the external HTTP call to Python reasoning engine
-        String responseFromEngine;
-        try {
-            responseFromEngine = restClient.get()
-                    .uri(reasoningEngineUrl + "/search?query={query}", normalizedQuery)
-                    .retrieve()
-                    .body(String.class);
-        } catch (Exception e) {
-            // Handle error when calling reasoning engine
-            return ResponseEntity.internalServerError().body("Error calling reasoning engine: " + e.getMessage());
-        }
+        // Cache miss: proceed with the external call via SearchService
+        SearchResponse responseFromEngine = searchService.search(request);
 
-        if (responseFromEngine != null) {
+        if (responseFromEngine != null && responseFromEngine.getResult() != null) {
             // Save the response object in Redis with a TTL of 1 hour
-            redisTemplate.opsForValue().set(cacheKey, responseFromEngine, Duration.ofHours(1));
-            return ResponseEntity.ok(responseFromEngine);
-        } else {
-            return ResponseEntity.noContent().build();
+            redisTemplate.opsForValue().set(cacheKey, responseFromEngine.getResult(), Duration.ofHours(1));
         }
+
+        return responseFromEngine;
     }
 
     /**
