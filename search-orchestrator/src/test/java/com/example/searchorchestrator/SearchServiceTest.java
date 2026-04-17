@@ -6,8 +6,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
@@ -64,6 +66,25 @@ class SearchServiceTest {
 
         assertEquals("Qdrant result", response.getResult());
         assertEquals("qdrant-fallback", response.getSource());
+        server.verify();
+    }
+
+    @Test
+    void search_ThrowsExceptionWhenFallbackAlsoFails() {
+        SearchRequest request = new SearchRequest("test query");
+
+        // Simulate reasoning engine failure
+        server.expect(requestTo("http://localhost:8000/reason"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withServerError());
+
+        // Expect fallback to Qdrant, but it also fails
+        server.expect(requestTo("http://localhost:6333/collections/default/points/search"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withServerError());
+
+        assertThrows(RestClientException.class, () -> searchService.search(request));
+
         server.verify();
     }
 }
