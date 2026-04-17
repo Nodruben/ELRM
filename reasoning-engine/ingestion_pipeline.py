@@ -7,14 +7,13 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
 
-def generate_embedding(text: str) -> List[float]:
+def generate_embeddings(texts: List[str]) -> List[List[float]]:
     """
-    Generates a mock vector embedding for the given text.
-    In a real system, this would call an embedding model API.
-    Here we generate a random 128-dimensional vector for demonstration.
+    Generates mock vector embeddings for the given list of texts in batch.
+    In a real system, this would call an embedding model API that supports batching.
+    Here we generate random 128-dimensional vectors for demonstration.
     """
-    # Using a fixed seed for demonstration purposes could be done, but random is fine.
-    return [random.uniform(-1.0, 1.0) for _ in range(128)]
+    return [[random.uniform(-1.0, 1.0) for _ in range(128)] for _ in texts]
 
 
 def main() -> None:
@@ -48,13 +47,14 @@ def main() -> None:
         return
 
     # 3. Process and upsert data
-    points = []
     print(f"Processing {len(products)} products...")
-    for product in products:
-        # Combine title and description for the embedding
-        text_to_embed = f"{product['title']} {product['description']}"
-        embedding = generate_embedding(text_to_embed)
 
+    # Batch generate embeddings for all products
+    texts_to_embed = [f"{p['title']} {p['description']}" for p in products]
+    embeddings = generate_embeddings(texts_to_embed)
+
+    points = []
+    for product, embedding in zip(products, embeddings):
         # Create a Qdrant PointStruct
         # Using a deterministic UUID based on the product ID for the point ID
         point_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(product['id'])))
