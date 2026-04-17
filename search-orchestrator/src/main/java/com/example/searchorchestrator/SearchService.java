@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -21,6 +22,7 @@ public class SearchService {
     private final String reasoningEngineUrl;
     private final String qdrantUrl;
 
+    @Autowired
     public SearchService(
             RestClient.Builder restClientBuilder,
             @Value("${reasoning.engine.url}") String reasoningEngineUrl,
@@ -60,16 +62,25 @@ public class SearchService {
     }
 
     public SearchResponse search(SearchRequest request) {
-        try {
-            // Attempt to call the Python reasoning engine first
-            String result = executePostRequest(reasoningEngineUrl, request);
+        String query = request.getQuery() == null ? "" : request.getQuery().trim();
+        String[] words = query.isEmpty() ? new String[0] : query.split("\\s+");
 
-            return new SearchResponse(result, "reasoning-engine");
-
-        } catch (RestClientException e) {
-            // Catch exception (timeout or connection error) and execute fallback
-            logger.warn("Call to reasoning engine failed (timeout or unavailable). Using Qdrant fallback.", e);
+        if (words.length <= 2) {
+            logger.info("FAST PATH: Bypassing reasoning engine for short query.");
             return fallbackSearch(request);
+        } else {
+            logger.info("ROUTING: Query is complex, calling reasoning engine.");
+            try {
+                // Attempt to call the Python reasoning engine first
+                String result = executePostRequest(reasoningEngineUrl, request);
+
+                return new SearchResponse(result, "reasoning-engine");
+
+            } catch (RestClientException e) {
+                // Catch exception (timeout or connection error) and execute fallback
+                logger.warn("Call to reasoning engine failed (timeout or unavailable). Using Qdrant fallback.", e);
+                return fallbackSearch(request);
+            }
         }
     }
 
