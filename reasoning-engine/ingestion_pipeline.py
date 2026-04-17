@@ -48,8 +48,12 @@ def main() -> None:
         return
 
     # 3. Process and upsert data
+    batch_size = 500
     points = []
-    print(f"Processing {len(products)} products...")
+    total_upserted = 0
+    print(f"Processing {len(products)} products in batches of {batch_size}...")
+
+    operation_info = None
     for product in products:
         # Combine title and description for the embedding
         text_to_embed = f"{product['title']} {product['description']}"
@@ -66,15 +70,28 @@ def main() -> None:
         )
         points.append(point)
 
-    print("Upserting records to Qdrant...")
-    operation_info = client.upsert(
-        collection_name=collection_name,
-        wait=True,
-        points=points
-    )
+        if len(points) >= batch_size:
+            print(f"Upserting batch of {len(points)} records...")
+            operation_info = client.upsert(
+                collection_name=collection_name,
+                wait=True,
+                points=points
+            )
+            total_upserted += len(points)
+            points = []
 
-    print(f"Successfully upserted {len(points)} records.")
-    print(f"Operation status: {operation_info.status}")
+    if points:
+        print(f"Upserting final batch of {len(points)} records...")
+        operation_info = client.upsert(
+            collection_name=collection_name,
+            wait=True,
+            points=points
+        )
+        total_upserted += len(points)
+
+    print(f"Successfully upserted {total_upserted} records.")
+    if operation_info:
+        print(f"Operation status: {operation_info.status}")
 
 
 if __name__ == "__main__":
