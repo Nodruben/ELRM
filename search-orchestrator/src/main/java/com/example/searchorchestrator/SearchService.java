@@ -51,14 +51,18 @@ public class SearchService {
         this.qdrantUrl = qdrantUrl;
     }
 
+    private String executePostRequest(String url, SearchRequest request) {
+        return restClient.post()
+                .uri(url)
+                .body(request)
+                .retrieve()
+                .body(String.class);
+    }
+
     public SearchResponse search(SearchRequest request) {
         try {
             // Attempt to call the Python reasoning engine first
-            String result = restClient.post()
-                    .uri(reasoningEngineUrl)
-                    .body(request)
-                    .retrieve()
-                    .body(String.class);
+            String result = executePostRequest(reasoningEngineUrl, request);
 
             return new SearchResponse(result, "reasoning-engine");
 
@@ -72,11 +76,7 @@ public class SearchService {
     private SearchResponse fallbackSearch(SearchRequest request) {
         try {
             // Standard text embedding search against Qdrant directly
-            String result = restClient.post()
-                    .uri(qdrantUrl)
-                    .body(request)
-                    .retrieve()
-                    .body(String.class);
+            String result = executePostRequest(qdrantUrl, request);
             return new SearchResponse(result, "qdrant-fallback");
         } catch (RestClientException e) {
             logger.error("Fallback Qdrant search also failed", e);
