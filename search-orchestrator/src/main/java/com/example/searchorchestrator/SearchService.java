@@ -3,8 +3,10 @@ package com.example.searchorchestrator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -21,6 +23,7 @@ public class SearchService {
     private final String reasoningEngineUrl;
     private final String qdrantUrl;
 
+    @Autowired
     public SearchService(
             RestClient.Builder restClientBuilder,
             @Value("${reasoning.engine.url}") String reasoningEngineUrl,
@@ -51,6 +54,7 @@ public class SearchService {
         this.qdrantUrl = qdrantUrl;
     }
 
+    @Cacheable(value = "search", key = "#request.query")
     public SearchResponse search(SearchRequest request) {
         try {
             // Attempt to call the Python reasoning engine first

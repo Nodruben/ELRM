@@ -1,6 +1,8 @@
 package com.example.searchorchestrator;
 
-public class SearchResponse {
+import java.io.Serializable;
+
+public class SearchResponse implements Serializable {
     private String result;
     private String source;
 
