@@ -1,0 +1,37 @@
+[
+  {
+    "id": "1",
+    "title": "Ergonomic Office Chair",
+    "description": "Adjustable height, lumbar support, breathable mesh back.",
+    "price": 199.99,
+    "stock": 50
+  },
+  {
+    "id": "2",
+    "title": "Wireless Noise Cancelling Headphones",
+    "description": "Over-ear, 30-hour battery life, active noise cancellation.",
+    "price": 299.50,
+    "stock": 120
+  },
+  {
+    "id": "3",
+    "title": "Standing Desk Converter",
+    "description": "Sit-stand desk riser, spacious keyboard tray, easy height adjustment.",
+    "price": 149.00,
+    "stock": 35
+  },
+  {
+    "id": "4",
+    "title": "Mechanical Gaming Keyboard",
+    "description": "RGB backlight, tactile switches, programmable macros.",
+    "price": 89.99,
+    "stock": 80
+  },
+  {
+    "id": "5",
+    "title": "4K Ultra HD Monitor",
+    "description": "27-inch IPS display, HDR support, ultra-thin bezels.",
+    "price": 349.99,
+    "stock": 25
+  }
+]
