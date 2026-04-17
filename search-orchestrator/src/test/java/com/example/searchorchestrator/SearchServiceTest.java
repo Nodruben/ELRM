@@ -28,16 +28,31 @@ class SearchServiceTest {
 
         searchService = new SearchService(
                 restClient,
-                "http://localhost:8000/reason",
+                "http://localhost:8000/analyze-intent",
                 "http://localhost:6333/collections/default/points/search"
         );
     }
 
     @Test
-    void search_SuccessFromReasoningEngine() {
-        SearchRequest request = new SearchRequest("test query");
+    void search_FastPathForShortQueries() {
+        SearchRequest request = new SearchRequest("short query");
 
-        server.expect(requestTo("http://localhost:8000/reason"))
+        server.expect(requestTo("http://localhost:6333/collections/default/points/search"))
+                .andExpect(method(HttpMethod.POST))
+                .andRespond(withSuccess("Qdrant result", MediaType.TEXT_PLAIN));
+
+        SearchResponse response = searchService.search(request);
+
+        assertEquals("Qdrant result", response.getResult());
+        assertEquals("qdrant-fallback", response.getSource());
+        server.verify();
+    }
+
+    @Test
+    void search_SuccessFromReasoningEngine() {
+        SearchRequest request = new SearchRequest("test complex query");
+
+        server.expect(requestTo("http://localhost:8000/analyze-intent"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess("Reasoning result", MediaType.TEXT_PLAIN));
 
@@ -50,10 +65,10 @@ class SearchServiceTest {
 
     @Test
     void search_FallbackToQdrantOnFailure() {
-        SearchRequest request = new SearchRequest("test query");
+        SearchRequest request = new SearchRequest("test complex query");
 
         // Simulate reasoning engine failure (e.g., timeout or server error)
-        server.expect(requestTo("http://localhost:8000/reason"))
+        server.expect(requestTo("http://localhost:8000/analyze-intent"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withServerError());
 
@@ -71,10 +86,10 @@ class SearchServiceTest {
 
     @Test
     void search_ThrowsExceptionWhenFallbackAlsoFails() {
-        SearchRequest request = new SearchRequest("test query");
+        SearchRequest request = new SearchRequest("test complex query");
 
         // Simulate reasoning engine failure
-        server.expect(requestTo("http://localhost:8000/reason"))
+        server.expect(requestTo("http://localhost:8000/analyze-intent"))
                 .andExpect(method(HttpMethod.POST))
                 .andRespond(withServerError());
 
