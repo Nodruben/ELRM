@@ -8,11 +8,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
 
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 public class SearchServiceBenchmarkTest {
@@ -22,6 +24,12 @@ public class SearchServiceBenchmarkTest {
 
     @Autowired
     private SearchService searchService;
+
+    @MockBean
+    private RedisConnectionFactory redisConnectionFactory; // Mock Redis to avoid test errors when offline
+
+    @MockBean
+    private ReactiveRedisConnectionFactory reactiveRedisConnectionFactory; // Need to mock this as well for spring data redis auto config
 
     private MockRestServiceServer server;
 
@@ -39,16 +47,14 @@ public class SearchServiceBenchmarkTest {
             .andExpect(method(HttpMethod.POST))
             .andRespond(withSuccess("Reasoning result", MediaType.TEXT_PLAIN));
 
-        // Without Redis actually running correctly in the test context (since Spring Boot Test starts, tries to connect to redis, fails and cache falls back/doesn't work as expected or connection refused happens continuously for the rest calls)
-        // We will just print the result and not fail the build for the benchmark.
         long start = System.currentTimeMillis();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 1000; i++) {
             try {
                 searchService.search(req);
             } catch (Exception e) {}
         }
         long end = System.currentTimeMillis();
         long totalTime = end - start;
-        System.out.println("Total time for 10 iterations: " + totalTime + "ms");
+        System.out.println("Total time for 1000 iterations: " + totalTime + "ms");
     }
 }
