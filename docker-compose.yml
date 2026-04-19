@@ -1,4 +1,3 @@
-
 services:
   qdrant:
     image: qdrant/qdrant:latest
@@ -9,6 +8,8 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
+    networks:
+      - app-network
 
   redis-stack:
     image: redis/redis-stack:latest
@@ -19,6 +20,36 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    networks:
+      - app-network
+
+  search-orchestrator:
+    build:
+      context: ./search-orchestrator
+    container_name: search-orchestrator
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    networks:
+      - app-network
+    depends_on:
+      - qdrant
+      - redis-stack
+      - reasoning-engine
+
+  reasoning-engine:
+    build:
+      context: ./reasoning-engine
+    container_name: reasoning-engine
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   qdrant_data:
