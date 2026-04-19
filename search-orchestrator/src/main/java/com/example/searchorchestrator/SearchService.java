@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -61,6 +62,7 @@ public class SearchService {
                 .body(String.class);
     }
 
+    @Cacheable(value = "searchResults", key = "#request.query != null ? T(org.springframework.util.DigestUtils).md5DigestAsHex(#request.query.trim().toLowerCase().getBytes()) : 'empty'")
     public SearchResponse search(SearchRequest request) {
         String query = request.getQuery() == null ? "" : request.getQuery().trim();
         String[] words = query.isEmpty() ? new String[0] : query.split("\\s+");
